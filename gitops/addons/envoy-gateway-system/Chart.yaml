@@ -1,0 +1,8 @@
+# Envoy Gateway (with the Gateway API CRDs) plus the platform's one Gateway, "edge" (BRIEF D5).
+apiVersion: v2
+name: envoy-gateway-system
+version: 0.1.0
+dependencies:
+  - name: gateway-helm
+    version: v1.9.2
+    repository: oci://docker.io/envoyproxy

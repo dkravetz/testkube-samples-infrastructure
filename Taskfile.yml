@@ -33,7 +33,12 @@ tasks:
       - rm -f ~/.kube/config
 
   urls:
-    desc: Show the endpoints
+    desc: Show the endpoints and logins
     cmds:
       - |
         echo "ministack:  http://localhost:4566"
+        if password=$(tofu -chdir=stacks/eks output -raw argocd_admin_password 2>/dev/null); then
+          echo "Argo CD:    http://argocd.platform.localhost  (admin / $password)"
+        else
+          echo "Argo CD:    not deployed (tofu apply in stacks/eks)"
+        fi

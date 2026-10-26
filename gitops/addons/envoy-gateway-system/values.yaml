@@ -1,0 +1,2 @@
+# Upstream chart defaults: Envoy Gateway runs the Envoy proxies in this namespace.
+gateway-helm: {}

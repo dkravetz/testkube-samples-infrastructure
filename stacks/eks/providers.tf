@@ -33,7 +33,7 @@ locals {
   exec = {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
-    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--output", "json"]
+    args        = ["eks", "get-token", "--cluster-name", module.cluster.cluster_name, "--output", "json"]
     env = {
       AWS_REGION            = "us-east-1"
       AWS_ACCESS_KEY_ID     = "000000000000"
@@ -44,8 +44,8 @@ locals {
 }
 
 provider "kubernetes" {
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  host                   = module.cluster.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.cluster.cluster_certificate_authority_data)
 
   exec {
     api_version = local.exec.api_version
@@ -55,11 +55,11 @@ provider "kubernetes" {
   }
 }
 
-# Not used here yet; configured for the Argo CD install (#6).
+# Installs Argo CD and the addons ApplicationSet (modules/eks-cluster).
 provider "helm" {
   kubernetes = {
-    host                   = module.eks.cluster_endpoint
-    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    host                   = module.cluster.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.cluster.cluster_certificate_authority_data)
     exec                   = local.exec
   }
 }

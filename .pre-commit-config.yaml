@@ -1,0 +1,36 @@
+# Install: pre-commit install. Run everything: pre-commit run --all-files.
+# The pre-commit-terraform hooks need tofu and jq on PATH.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  # Keep each hook's own --hook-config (--mode, --retry-once-with-cleanup) before
+  # --tf-path: the hooks only read their own keys reliably from the first --hook-config.
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.109.3
+    hooks:
+      - id: terraform_fmt
+        args:
+          - --hook-config=--tf-path=tofu
+      # Runs `tofu init -backend=false` then `tofu validate` in each changed directory.
+      # The retry clears a stale .terraform/ and re-inits (needs jq).
+      - id: terraform_validate
+        args:
+          - --hook-config=--retry-once-with-cleanup=true
+          - --hook-config=--tf-path=tofu
+      # Runs when a .terraform.lock.hcl changes: makes sure every provider has checksums
+      # for macOS (Apple Silicon, Intel) and Linux (x86_64, ARM64), and adds any missing
+      # ones with `tofu providers lock`.
+      - id: terraform_providers_lock
+        args:
+          - --hook-config=--mode=regenerate-lockfile-if-some-platform-missed
+          - --hook-config=--tf-path=tofu
+          - --args=-platform=darwin_arm64
+          - --args=-platform=darwin_amd64
+          - --args=-platform=linux_amd64
+          - --args=-platform=linux_arm64

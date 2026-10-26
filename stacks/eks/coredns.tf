@@ -7,6 +7,10 @@ locals {
 }
 
 resource "kubernetes_config_map_v1" "coredns_custom" {
+  # After the access entries (the root key's admin rights) and Argo CD: by then k3s has deployed
+  # CoreDNS too.
+  depends_on = [module.cluster]
+
   lifecycle {
     precondition {
       condition     = local.ministack_ip != ""
@@ -34,26 +38,18 @@ resource "kubernetes_config_map_v1" "coredns_custom" {
   }
 }
 
-# CoreDNS doesn't reload imported files, so restart it when the ConfigMap changes. k3s deploys
-# CoreDNS shortly after the cluster turns ACTIVE, so wait for the Deployment first. kubectl uses a
-# throwaway kubeconfig, made like `task kubeconfig` does.
-resource "terraform_data" "coredns_restart" {
-  triggers_replace = kubernetes_config_map_v1.coredns_custom.data
-
-  provisioner "local-exec" {
-    interpreter = ["bash", "-c"]
-    environment = local.exec.env
-    command     = <<-EOT
-      set -euo pipefail
-      export KUBECONFIG=$(mktemp)
-      trap 'rm -f "$KUBECONFIG"' EXIT
-      aws --endpoint-url http://localhost:4566 eks update-kubeconfig --name ${module.eks.cluster_name} >/dev/null
-      for i in $(seq 1 90); do
-        kubectl -n kube-system get deploy/coredns >/dev/null 2>&1 && break
-        sleep 2
-      done
-      kubectl -n kube-system rollout restart deploy/coredns
-      kubectl -n kube-system rollout status deploy/coredns --timeout=180s
-    EOT
+# CoreDNS doesn't reload imported files, so a checksum of the ConfigMap on its pod template rolls
+# it when the content changes. It follows the ConfigMap, which waits for module.cluster.
+resource "kubernetes_annotations" "coredns_restart" {
+  api_version = "apps/v1"
+  kind        = "Deployment"
+  metadata {
+    name      = "coredns"
+    namespace = "kube-system"
   }
+  template_annotations = {
+    "testkube-poc/coredns-custom-sha256" = sha256(jsonencode(kubernetes_config_map_v1.coredns_custom.data))
+  }
+  # k3s's deploy controller manages the Deployment; take over just this annotation.
+  force = true
 }

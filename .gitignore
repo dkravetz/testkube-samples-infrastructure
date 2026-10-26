@@ -12,3 +12,6 @@ crash.*.log
 *.pem
 *.key
 .task/
+
+# Helm dependencies are pulled by Argo CD (and helm dependency build); Chart.lock pins them.
+gitops/**/charts/

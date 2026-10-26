@@ -1,8 +1,6 @@
 # What every stack needs before it can run: an S3 bucket for its state and the role it
 # assumes. This root keeps its own state locally (ministack can't hold it before it exists).
 
-data "aws_caller_identity" "current" {}
-
 module "state_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "~> 5.17"
