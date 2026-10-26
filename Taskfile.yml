@@ -1,0 +1,39 @@
+# Bootstrap only: ministack on the laptop, then the S3 bucket and IAM role OpenTofu uses.
+# Everything after that is plain `tofu init` / `tofu apply` in stacks/<name>.
+version: '3'
+silent: true
+
+includes:
+  ministack: ./bootstrap/ministack
+
+tasks:
+  bootstrap:
+    desc: Start ministack and socat, then create the OpenTofu state bucket and the tofu role
+    cmds:
+      - task: ministack:up
+      - tofu -chdir=bootstrap/tofu-state init -input=false
+      - tofu -chdir=bootstrap/tofu-state apply -input=false -auto-approve
+
+  kubeconfig:
+    desc: Add the testkube-poc cluster to ~/.kube/config (run after stacks/eks)
+    deps: [ministack:aws-profile]
+    cmds:
+      - aws --profile ministack eks update-kubeconfig --name testkube-poc --alias testkube-poc --user-alias testkube-poc
+      # With AUTH, ministack only accepts tokens signed for sts.<region>.amazonaws.com, but the
+      # profile's endpoint_url would sign them for localhost. get-token only signs locally, so
+      # nothing is sent to AWS.
+      - kubectl config set-credentials testkube-poc --exec-env=AWS_ENDPOINT_URL_STS=https://sts.us-east-1.amazonaws.com >/dev/null
+
+  down:
+    desc: Remove ministack and everything in it, including every stack's state
+    cmds:
+      - task: ministack:down
+      - rm -f bootstrap/tofu-state/terraform.tfstate bootstrap/tofu-state/terraform.tfstate.backup
+      # Written by task kubeconfig.
+      - rm -f ~/.kube/config
+
+  urls:
+    desc: Show the endpoints
+    cmds:
+      - |
+        echo "ministack:  http://localhost:4566"

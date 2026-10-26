@@ -1,0 +1,100 @@
+# ministack and the socat container, run straight from Docker on the laptop.
+version: '3'
+silent: true
+
+vars:
+  IMAGE: ministackorg/ministack:1.5.32-full
+  SOCAT_IMAGE: alpine/socat:1.8.1.3
+  NETWORK: testkube-poc
+  REGION: us-east-1
+  # A 12-digit access key is ministack's root caller for that account ID.
+  ACCOUNT_ID: '000000000000'
+  CLUSTER: testkube-poc
+  # The k3s container ministack starts for the EKS cluster.
+  K3S_CONTAINER: ministack-eks-{{.ACCOUNT_ID}}-{{.REGION}}-{{.CLUSTER}}
+  # Read by OpenTofu (stacks/eks) for the CoreDNS "ministack" zone.
+  INFO_FILE: '{{.ROOT_DIR}}/.local/ministack.yaml'
+
+tasks:
+  up:
+    desc: Start the network, ministack and the socat container
+    preconditions:
+      - sh: colima status >/dev/null 2>&1
+        msg: "Colima isn't running. Start it with: colima start --vm-type vz --cpu 4 --memory 16 --disk 100"
+    cmds:
+      - docker network inspect {{.NETWORK}} >/dev/null 2>&1 || docker network create {{.NETWORK}} >/dev/null
+      # The Docker socket is the Colima VM's: ministack starts k3s, Postgres and Redis next to
+      # itself on the same network. AUTH enforces IAM (and EKS access entries). PERSIST_STATE
+      # keeps the records and S3_PERSIST the objects; ministack saves them when it stops, so it
+      # gets 30 s to stop.
+      - |
+        if docker container inspect ministack >/dev/null 2>&1; then
+          docker start ministack >/dev/null
+        else
+          docker run -d --name ministack \
+            --network {{.NETWORK}} -p 4566:4566 \
+            --stop-timeout 30 \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v ministack-state:/data \
+            -e GATEWAY_PORT=4566 \
+            -e MINISTACK_REGION={{.REGION}} \
+            -e DOCKER_NETWORK={{.NETWORK}} \
+            -e MINISTACK_HOST=localhost \
+            -e AUTH=true \
+            -e PERSIST_STATE=1 -e STATE_DIR=/data/state \
+            -e S3_PERSIST=1 -e S3_DATA_DIR=/data/s3 \
+            {{.IMAGE}} >/dev/null
+        fi
+      # Mac :80/:443 → the k3s NodePorts of Envoy Gateway (30080/30443). socat looks up the
+      # k3s container on each connection, so it can start before the cluster exists.
+      - |
+        if docker container inspect socat >/dev/null 2>&1; then
+          docker start socat >/dev/null
+        else
+          docker run -d --name socat \
+            --network {{.NETWORK}} -p 80:80 -p 443:443 \
+            --entrypoint sh \
+            {{.SOCAT_IMAGE}} -c \
+            'socat TCP-LISTEN:80,fork,reuseaddr TCP:{{.K3S_CONTAINER}}:30080 & exec socat TCP-LISTEN:443,fork,reuseaddr TCP:{{.K3S_CONTAINER}}:30443' >/dev/null
+        fi
+      - task: wait
+      - mkdir -p '{{dir .INFO_FILE}}'
+      - |
+        ip=$(docker inspect ministack --format '{{"{{"}}(index .NetworkSettings.Networks "{{.NETWORK}}").IPAddress{{"}}"}}')
+        printf 'ip: %s\n' "$ip" > '{{.INFO_FILE}}'
+        echo "ministack is up at http://localhost:4566 ($ip on {{.NETWORK}})"
+
+  aws-profile:
+    desc: Create or update the AWS CLI profile "ministack" (aws --profile ministack ...)
+    cmds:
+      - aws configure set aws_access_key_id {{.ACCOUNT_ID}} --profile ministack
+      - aws configure set aws_secret_access_key test --profile ministack
+      - aws configure set region {{.REGION}} --profile ministack
+      - aws configure set endpoint_url http://localhost:4566 --profile ministack
+
+  wait:
+    internal: true
+    cmds:
+      - |
+        for i in $(seq 1 60); do
+          curl -sf localhost:4566/_ministack/health >/dev/null && exit 0
+          sleep 2
+        done
+        echo "ministack wasn't healthy after 2 minutes; see: docker logs ministack" >&2
+        exit 1
+
+  down:
+    desc: Remove ministack, socat, every container ministack started, their volumes and the network
+    cmds:
+      - docker rm -fv socat >/dev/null 2>&1 || true
+      - docker stop -t 30 ministack >/dev/null 2>&1 || true
+      - docker rm -v ministack >/dev/null 2>&1 || true
+      # Containers ministack started (k3s, Postgres, Redis) carry the label "ministack".
+      - |
+        leftover=$(docker ps -aq --filter label=ministack)
+        [ -z "$leftover" ] || docker rm -fv $leftover >/dev/null
+      - |
+        volumes=$(docker volume ls -q --filter name='^ministack-state$' --filter name='^ministack-rds-')
+        [ -z "$volumes" ] || docker volume rm $volumes >/dev/null
+      - docker network rm {{.NETWORK}} >/dev/null 2>&1 || true
+      - rm -f '{{.INFO_FILE}}'

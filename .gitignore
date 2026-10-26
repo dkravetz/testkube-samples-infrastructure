@@ -1,0 +1,14 @@
+# OpenTofu
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.tfvars
+# Per-machine files: ministack.yaml (task bootstrap), github-app.pem (operator)
+.local/
+# Never commit keys
+*.pem
+*.key
+.task/
