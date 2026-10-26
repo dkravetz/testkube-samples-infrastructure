@@ -19,7 +19,10 @@ repos:
           - --hook-config=--tf-path=tofu
       # Runs `tofu init -backend=false` then `tofu validate` in each changed directory.
       # The retry clears a stale .terraform/ and re-inits (needs jq).
+      # Roots only: init would write a .terraform.lock.hcl into a module. Modules are
+      # validated through the roots that call them.
       - id: terraform_validate
+        exclude: ^modules/
         args:
           - --hook-config=--retry-once-with-cleanup=true
           - --hook-config=--tf-path=tofu
