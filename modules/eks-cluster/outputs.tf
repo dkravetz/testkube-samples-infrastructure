@@ -28,3 +28,8 @@ output "argocd_admin_password" {
   value       = random_password.argocd_admin.result
   sensitive   = true
 }
+
+output "ca_cert_pem" {
+  description = "Certificate (PEM) of the local CA that signs the edge certificate."
+  value       = tls_self_signed_cert.ca.cert_pem
+}

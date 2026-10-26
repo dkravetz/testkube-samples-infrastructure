@@ -69,3 +69,9 @@ variable "github_app" {
   })
   sensitive = true
 }
+
+variable "edge_tls_hostnames" {
+  description = "DNS names of the edge certificate the Envoy Gateway serves on :443; the first is its common name. Browsers only: pods call the same hosts over plain HTTP."
+  type        = list(string)
+  default     = ["*.platform.localhost", "*.dev.localhost", "*.prd.localhost"]
+}

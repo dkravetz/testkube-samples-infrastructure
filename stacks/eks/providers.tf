@@ -17,12 +17,13 @@ provider "aws" {
   skip_metadata_api_check     = true
 
   endpoints {
-    ec2  = "http://localhost:4566"
-    eks  = "http://localhost:4566"
-    iam  = "http://localhost:4566"
-    kms  = "http://localhost:4566"
-    logs = "http://localhost:4566"
-    sts  = "http://localhost:4566"
+    ec2            = "http://localhost:4566"
+    eks            = "http://localhost:4566"
+    iam            = "http://localhost:4566"
+    kms            = "http://localhost:4566"
+    logs           = "http://localhost:4566"
+    secretsmanager = "http://localhost:4566"
+    sts            = "http://localhost:4566"
   }
 }
 

@@ -9,7 +9,7 @@ To bring the platform up on a Mac:
 - [Colima](https://github.com/abiosoft/colima) and the Docker CLI: the container runtime for
   ministack, the socat container and the k3s cluster ministack starts
 - [Task](https://taskfile.dev) (`task`): `task bootstrap`, `task kubeconfig`, `task urls`,
-  `task down`
+  `task trust-ca` / `task untrust-ca` (optional), `task down`
 - [OpenTofu](https://opentofu.org/docs/intro/install/) (`tofu`): the stacks under `stacks/`
 - [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
   (`aws`): the `ministack` profile and `aws eks get-token` for kubectl and the providers
@@ -24,6 +24,11 @@ colima start --vm-type vz --cpu 4 --memory 16 --disk 100
 ```
 
 The GitHub App's private key goes in `.local/github-app.pem` (gitignored).
+
+`stacks/eks` writes the local CA's certificate to `.local/ca.crt`: `curl --cacert .local/ca.crt
+https://argocd.platform.localhost`. Browsers show a warning you can click through, or run
+`task trust-ca` to trust it in the macOS login keychain; `task down` removes it again. Plain HTTP
+works without it.
 
 ## Pre-commit checks
 

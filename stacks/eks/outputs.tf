@@ -23,3 +23,8 @@ output "argocd_admin_password" {
   value       = module.cluster.argocd_admin_password
   sensitive   = true
 }
+
+output "ca_cert_file" {
+  description = "Local CA certificate (PEM) the edge certificate is signed with."
+  value       = abspath(local_file.ca_cert.filename)
+}

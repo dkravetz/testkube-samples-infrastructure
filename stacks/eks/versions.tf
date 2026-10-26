@@ -14,6 +14,10 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 3.3"
     }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.9"
+    }
   }
 
   # State in ministack's S3 (bucket and role from bootstrap/tofu-state).

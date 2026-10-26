@@ -1,0 +1,18 @@
+# The Gateway's certificate, made by modules/eks-cluster (tls.tf) and stored in Secrets Manager
+# with the keys of a kubernetes.io/tls Secret.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: edge-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws
+  target:
+    name: edge-tls
+    template:
+      type: kubernetes.io/tls
+  dataFrom:
+    - extract:
+        key: platform/tls/edge

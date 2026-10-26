@@ -37,3 +37,10 @@ module "cluster" {
   gitops_repo_url = "https://github.com/dkravetz/testkube-samples-infrastructure"
   github_app      = local.github_app
 }
+
+# For curl --cacert and task trust-ca.
+resource "local_file" "ca_cert" {
+  filename        = "${path.module}/../../.local/ca.crt"
+  content         = module.cluster.ca_cert_pem
+  file_permission = "0644"
+}

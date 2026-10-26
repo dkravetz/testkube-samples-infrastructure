@@ -6,6 +6,12 @@ silent: true
 includes:
   ministack: ./bootstrap/ministack
 
+vars:
+  # Written by stacks/eks; its common name is "<cluster> local CA".
+  CA_FILE: .local/ca.crt
+  CA_NAME: testkube-poc local CA
+  KEYCHAIN: ~/Library/Keychains/login.keychain-db
+
 tasks:
   bootstrap:
     desc: Start ministack and socat, then create the OpenTofu state bucket and the tofu role
@@ -31,6 +37,9 @@ tasks:
       - rm -f bootstrap/tofu-state/terraform.tfstate bootstrap/tofu-state/terraform.tfstate.backup
       # Written by task kubeconfig.
       - rm -f ~/.kube/config
+      # The next stacks/eks apply makes a new CA.
+      - task: untrust-ca
+      - rm -f {{.CA_FILE}}
 
   urls:
     desc: Show the endpoints and logins
@@ -38,7 +47,31 @@ tasks:
       - |
         echo "ministack:  http://localhost:4566"
         if password=$(tofu -chdir=stacks/eks output -raw argocd_admin_password 2>/dev/null); then
-          echo "Argo CD:    http://argocd.platform.localhost  (admin / $password)"
+          echo "Argo CD:    http://argocd.platform.localhost  https://argocd.platform.localhost  (admin / $password)"
         else
           echo "Argo CD:    not deployed (tofu apply in stacks/eks)"
         fi
+        if [ -f {{.CA_FILE}} ]; then
+          echo "Local CA:   {{.CA_FILE}}  (curl --cacert {{.CA_FILE}}; task trust-ca for browsers)"
+        else
+          echo "Local CA:   not created (tofu apply in stacks/eks)"
+        fi
+
+  trust-ca:
+    desc: Trust the local CA ({{.CA_FILE}}) in the macOS login keychain, for HTTPS in browsers
+    prompt: Add {{.CA_FILE}} to your login keychain as a trusted root? macOS asks for your password.
+    preconditions:
+      - sh: test -f {{.CA_FILE}}
+        msg: "{{.CA_FILE}} is missing: tofu apply in stacks/eks first."
+    cmds:
+      # Any older CA of a previous cluster first.
+      - task: untrust-ca
+      - security add-trusted-cert -r trustRoot -k {{.KEYCHAIN}} {{.CA_FILE}}
+
+  untrust-ca:
+    desc: Remove every "{{.CA_NAME}}" certificate and its trust from the macOS login keychain
+    cmds:
+      - |
+        for hash in $(security find-certificate -a -Z -c '{{.CA_NAME}}' {{.KEYCHAIN}} 2>/dev/null | awk '/^SHA-256 hash:/ {print $3}'); do
+          security delete-certificate -t -Z "$hash" {{.KEYCHAIN}}
+        done
