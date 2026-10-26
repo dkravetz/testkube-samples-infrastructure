@@ -1,4 +1,4 @@
-# The EKS cluster. On ministack, CreateCluster starts a real single-node k3s (BRIEF D3).
+# The EKS cluster. On ministack, CreateCluster starts a real single-node k3s.
 
 locals {
   # These are needed for ArgoCD's Github access

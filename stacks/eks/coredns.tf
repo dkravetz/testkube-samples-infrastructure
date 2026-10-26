@@ -1,4 +1,4 @@
-# Pod name resolution (BRIEF D21): "ministack" → ministack's IP on the Docker network, and
+# Pod name resolution: "ministack" → ministack's IP on the Docker network, and
 # *.localhost / *.internal → the Envoy Service "edge" (#8). k3s's CoreDNS imports these keys.
 locals {
   # Written by `task bootstrap`.

@@ -8,6 +8,11 @@ output "cluster_endpoint" {
   value       = module.cluster.cluster_endpoint
 }
 
+output "external_secrets_role_arn" {
+  description = "IAM role of External Secrets Operator (the add-on's service account annotation)."
+  value       = module.cluster.external_secrets_role_arn
+}
+
 output "argocd_namespace" {
   description = "Namespace Argo CD runs in."
   value       = module.cluster.argocd_namespace

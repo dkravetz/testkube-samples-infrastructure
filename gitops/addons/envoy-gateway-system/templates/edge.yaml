@@ -1,5 +1,5 @@
 # Envoy's Service is called "edge" and is a NodePort on 30080/30443: the socat container on the
-# laptop forwards :80/:443 there (BRIEF D5, D6). ministack's k3s has no LoadBalancer support.
+# laptop forwards :80/:443 there. ministack's k3s has no LoadBalancer support.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:

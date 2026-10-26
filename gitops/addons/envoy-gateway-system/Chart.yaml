@@ -1,4 +1,4 @@
-# Envoy Gateway (with the Gateway API CRDs) plus the platform's one Gateway, "edge" (BRIEF D5).
+# Envoy Gateway (with the Gateway API CRDs) plus the platform's one Gateway, "edge".
 apiVersion: v2
 name: envoy-gateway-system
 version: 0.1.0

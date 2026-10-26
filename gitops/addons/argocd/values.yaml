@@ -4,7 +4,7 @@ argo-cd:
     secret:
       createSecret: false
     params:
-      # TLS ends at the Envoy Gateway (BRIEF D5); in-cluster traffic is plain HTTP.
+      # TLS ends at the Envoy Gateway; in-cluster traffic is plain HTTP.
       server.insecure: true
       # Compare with what the API server would store (defaults included), so resources whose
       # CRDs arrive after Argo CD starts don't show as OutOfSync.
@@ -15,7 +15,7 @@ argo-cd:
     enabled: false
 
   server:
-    # http://argocd.platform.localhost (BRIEF D7)
+    # http://argocd.platform.localhost
     httproute:
       enabled: true
       parentRefs:

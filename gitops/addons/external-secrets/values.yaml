@@ -1,0 +1,17 @@
+external-secrets:
+  # IRSA: the role from modules/eks-cluster (external-secrets.tf), output external_secrets_role_arn
+  # of stacks/eks. The ClusterSecretStore signs in with this service account's token.
+  serviceAccount:
+    name: external-secrets
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::000000000000:role/testkube-poc-external-secrets
+
+  # The AWS provider has no endpoint setting of its own; the SDK clients read these. "ministack"
+  # resolves in pods through the CoreDNS zone from stacks/eks.
+  extraEnv:
+    - name: AWS_SECRETSMANAGER_ENDPOINT
+      value: http://ministack:4566
+    - name: AWS_SSM_ENDPOINT
+      value: http://ministack:4566
+    - name: AWS_STS_ENDPOINT
+      value: http://ministack:4566

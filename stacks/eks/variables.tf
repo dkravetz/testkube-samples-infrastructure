@@ -1,4 +1,4 @@
-# GitHub App Argo CD reads every dkravetz repository with (BRIEF D14). Its private key is the
+# GitHub App Argo CD reads every dkravetz repository with. Its private key is the
 # operator's, at .local/github-app.pem (gitignored).
 variable "github_app_id" {
   description = "GitHub App ID (dkravetz-ministack-poc)."
