@@ -31,7 +31,7 @@ variable "access_entries" {
 }
 
 variable "argocd_chart_version" {
-  description = "argo-cd Helm chart version."
+  description = "argo-cd Helm chart version of the first install; gitops/addons/argocd pins it after that."
   type        = string
   default     = "10.11.6"
 }
@@ -60,13 +60,12 @@ variable "gitops_addons_path" {
 }
 
 variable "github_app" {
-  description = "GitHub App Argo CD authenticates with to every repository under url_prefix. null = anonymous reads."
+  description = "GitHub App Argo CD authenticates with to every repository under url_prefix."
   type = object({
     url_prefix      = string
     id              = string
     installation_id = string
     private_key     = string
   })
-  default   = null
   sensitive = true
 }

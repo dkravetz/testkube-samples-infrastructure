@@ -1,0 +1,8 @@
+# Argo CD itself (it manages itself: OpenTofu installed the first copy, modules/eks-cluster).
+apiVersion: v2
+name: argocd
+version: 0.1.0
+dependencies:
+  - name: argo-cd
+    version: 10.11.6
+    repository: https://argoproj.github.io/argo-helm

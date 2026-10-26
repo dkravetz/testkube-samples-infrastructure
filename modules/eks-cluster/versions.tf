@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.70"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 3.4"
+    }
     helm = {
       source  = "hashicorp/helm"
       version = "~> 3.3"
@@ -13,6 +17,10 @@ terraform {
     random = {
       source  = "hashicorp/random"
       version = "~> 3.9"
+    }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.14"
     }
   }
 }

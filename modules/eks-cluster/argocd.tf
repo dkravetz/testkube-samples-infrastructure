@@ -1,38 +1,91 @@
-# The admin password is OpenTofu's, so it is an output (Argo CD stores only the bcrypt hash).
+# Argo CD manages itself: OpenTofu only installs a first copy, and Argo CD's own Application
+# (gitops/addons/argocd) takes over its configuration from git within a minute. The two secrets
+# Argo CD needs are OpenTofu's, so nothing secret is in git.
+
+resource "kubernetes_namespace_v1" "argocd" {
+  metadata {
+    name = "argocd"
+  }
+
+  depends_on = [module.eks]
+}
+
+# The admin password is OpenTofu's, so it is an output; Argo CD stores only the bcrypt hash.
 resource "random_password" "argocd_admin" {
   length  = 24
   special = false
 }
 
-resource "helm_release" "argocd" {
-  name             = "argocd"
-  namespace        = "argocd"
-  create_namespace = true
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-cd"
-  version          = var.argocd_chart_version
+resource "time_static" "argocd_admin_password" {
+  triggers = {
+    hash = random_password.argocd_admin.bcrypt_hash
+  }
+}
 
-  values = [yamlencode({
-    configs = {
-      # TLS ends at the Envoy Gateway (BRIEF D5); in-cluster traffic is plain HTTP.
-      params = { "server.insecure" = true }
+# argocd-secret is OpenTofu's (the chart runs with configs.secret.createSecret = false). Argo CD
+# adds its own keys at startup (server.secretkey, tls.crt, tls.key), so OpenTofu writes the data
+# once and re-creates the Secret only when the password changes.
+resource "kubernetes_secret_v1" "argocd" {
+  metadata {
+    name      = "argocd-secret"
+    namespace = kubernetes_namespace_v1.argocd.metadata[0].name
+    labels = {
+      "app.kubernetes.io/name"    = "argocd-secret"
+      "app.kubernetes.io/part-of" = "argocd"
     }
-    # Admin login is enough for the PoC.
-    dex = { enabled = false }
+  }
+
+  data = {
+    "admin.password"      = random_password.argocd_admin.bcrypt_hash
+    "admin.passwordMtime" = time_static.argocd_admin_password.rfc3339
+  }
+
+  lifecycle {
+    ignore_changes       = [data]
+    replace_triggered_by = [random_password.argocd_admin]
+  }
+}
+
+# Repository credentials for every repository under the owner: the GitHub App.
+resource "kubernetes_secret_v1" "argocd_repo_creds" {
+  metadata {
+    name      = "github-app-repo-creds"
+    namespace = kubernetes_namespace_v1.argocd.metadata[0].name
+    labels = {
+      "argocd.argoproj.io/secret-type" = "repo-creds"
+    }
+  }
+
+  data = {
+    type                    = "git"
+    url                     = var.github_app.url_prefix
+    githubAppID             = var.github_app.id
+    githubAppInstallationID = var.github_app.installation_id
+    githubAppPrivateKey     = var.github_app.private_key
+  }
+}
+
+# The first install only. Its configuration lives in gitops/addons/argocd, which pins the chart
+# version from then on; OpenTofu never upgrades or reconfigures this release.
+resource "helm_release" "argocd" {
+  name       = "argocd"
+  namespace  = kubernetes_namespace_v1.argocd.metadata[0].name
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-cd"
+  version    = var.argocd_chart_version
+
+  # Only what must hold from the start: the secret is OpenTofu's, and Dex is off (Argo CD would
+  # not remove a Dex it didn't create). Everything else comes from gitops/addons/argocd.
+  values = [yamlencode({
+    configs = { secret = { createSecret = false } }
+    dex     = { enabled = false }
   })]
 
-  # The admin password hash, and repository credentials for every repo under the owner: one
-  # GitHub App credential template.
-  set_sensitive = concat([
-    { name = "configs.secret.argocdServerAdminPassword", value = random_password.argocd_admin.bcrypt_hash },
-    ], var.github_app == null ? [] : [
-    { name = "configs.credentialTemplates.github-app.url", value = var.github_app.url_prefix },
-    { name = "configs.credentialTemplates.github-app.githubAppID", value = var.github_app.id, type = "string" },
-    { name = "configs.credentialTemplates.github-app.githubAppInstallationID", value = var.github_app.installation_id, type = "string" },
-    { name = "configs.credentialTemplates.github-app.githubAppPrivateKey", value = var.github_app.private_key },
-  ])
+  lifecycle {
+    ignore_changes = all
+  }
 
-  depends_on = [module.eks]
+  depends_on = [kubernetes_secret_v1.argocd, kubernetes_secret_v1.argocd_repo_creds]
 }
 
 resource "helm_release" "addons" {

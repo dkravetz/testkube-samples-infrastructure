@@ -1,0 +1,27 @@
+argo-cd:
+  configs:
+    # argocd-secret (admin password) and the GitHub App repo-creds Secret are OpenTofu's.
+    secret:
+      createSecret: false
+    params:
+      # TLS ends at the Envoy Gateway (BRIEF D5); in-cluster traffic is plain HTTP.
+      server.insecure: true
+      # Compare with what the API server would store (defaults included), so resources whose
+      # CRDs arrive after Argo CD starts don't show as OutOfSync.
+      controller.diff.server.side: true
+
+  # Admin login is enough for the PoC.
+  dex:
+    enabled: false
+
+  server:
+    # http://argocd.platform.localhost (BRIEF D7)
+    httproute:
+      enabled: true
+      parentRefs:
+        - group: gateway.networking.k8s.io
+          kind: Gateway
+          name: edge
+          namespace: envoy-gateway-system
+      hostnames:
+        - argocd.platform.localhost
