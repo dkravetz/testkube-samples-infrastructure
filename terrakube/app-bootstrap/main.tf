@@ -7,8 +7,7 @@
 locals {
   # Every app repository on the platform, by app name.
   apps = {
-    # TEMPORARY: the #10 test branch; set back to "main" before merging.
-    testkube-samples = { repository = "testkube-samples", branch = "10-terrakube-config" }
+    testkube-samples = { repository = "testkube-samples", branch = "main" }
   }
 }
 

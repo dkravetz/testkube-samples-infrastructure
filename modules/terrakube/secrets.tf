@@ -3,8 +3,8 @@
 locals {
   secrets = {
     # Secret terrakube-api-secrets. The chart's ConfigMap can't hold the hosts (container IPs on
-    # ministack, new on every rebuild) or a custom S3 endpoint; Secrets come after ConfigMaps in
-    # the pods' envFrom, so these values win.
+    # ministack, new on every rebuild), a custom S3 endpoint or the bucket's region (storage.tf);
+    # Secrets come after ConfigMaps in the pods' envFrom, so these values win.
     api = {
       PatSecret              = local.pat_secret
       InternalSecret         = local.internal_secret
@@ -13,6 +13,7 @@ locals {
       DatasourcePassword     = random_password.db.result
       TerrakubeRedisHostname = module.valkey.replication_group_primary_endpoint_address
       AwsEndpoint            = var.s3_endpoint
+      AwsStorageRegion       = aws_s3_bucket.this.bucket_region
       AwsStorageAccessKey    = module.storage_user.access_key_id
       AwsStorageSecretKey    = module.storage_user.access_key_secret
     }
@@ -21,6 +22,8 @@ locals {
       InternalSecret              = local.internal_secret
       TerrakubeRedisHostname      = module.valkey.replication_group_primary_endpoint_address
       AwsEndpoint                 = var.s3_endpoint
+      AwsTerraformStateRegion     = aws_s3_bucket.this.bucket_region
+      AwsTerraformOutputRegion    = aws_s3_bucket.this.bucket_region
       AwsTerraformStateAccessKey  = module.storage_user.access_key_id
       AwsTerraformStateSecretKey  = module.storage_user.access_key_secret
       AwsTerraformOutputAccessKey = module.storage_user.access_key_id
@@ -32,6 +35,7 @@ locals {
       InternalSecret      = local.internal_secret
       AppClientId         = local.dex_client_id
       AwsEndpoint         = var.s3_endpoint
+      AwsStorageRegion    = aws_s3_bucket.this.bucket_region
       AwsStorageAccessKey = module.storage_user.access_key_id
       AwsStorageSecretKey = module.storage_user.access_key_secret
     }

@@ -12,14 +12,19 @@ spec:
       envoyService:
         name: edge
         type: NodePort
+        # Ports merge by number. Each has Envoy Gateway's own name for it, so the Service stays
+        # valid before the https listener exists (its certificate arrives through External
+        # Secrets): an unnamed second port would be rejected, and with it plain HTTP.
         patch:
           type: StrategicMerge
           value:
             spec:
               ports:
-                - port: 80
+                - name: http-80
+                  port: 80
                   nodePort: 30080
-                - port: 443
+                - name: https-443
+                  port: 443
                   nodePort: 30443
 ---
 apiVersion: gateway.networking.k8s.io/v1
