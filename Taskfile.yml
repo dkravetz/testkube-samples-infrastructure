@@ -1,5 +1,5 @@
-# Bootstrap only: ministack on the laptop, then the S3 bucket and IAM role OpenTofu uses.
-# Everything after that is plain `tofu init` / `tofu apply` in stacks/<name>.
+# The whole platform from nothing: ministack on the laptop, the S3 bucket and IAM role OpenTofu
+# uses, then every stack under stacks/ in order (each also a plain `tofu init` / `tofu apply`).
 version: '3'
 silent: true
 
@@ -14,12 +14,18 @@ vars:
 
 tasks:
   bootstrap:
-    desc: Start ministack and socat, then create the OpenTofu state bucket and the tofu role
+    desc: Start ministack and socat, create the OpenTofu state bucket and the tofu role, apply every stack and add the cluster to ~/.kube/config
     cmds:
       - task: ministack:up
       - tofu -chdir=bootstrap/tofu-state init -input=false
       - tofu -chdir=bootstrap/tofu-state apply -input=false -auto-approve
       - task: github-app-key
+      # vpc → eks (cluster, Argo CD, everything cluster-core) → terrakube (its config; waits for
+      # the Terrakube API Argo CD installs).
+      - for: [vpc, eks, terrakube]
+        cmd: tofu -chdir=stacks/{{.ITEM}} init -input=false && tofu -chdir=stacks/{{.ITEM}} apply -input=false -auto-approve
+      - task: kubeconfig
+      - task: urls
 
   github-app-key:
     desc: Write the GitHub App's private key as PKCS#8 (.local/github-app.pkcs8.pem), for Terrakube
@@ -31,7 +37,7 @@ tasks:
       - openssl pkcs8 -topk8 -nocrypt -in .local/github-app.pem -out .local/github-app.pkcs8.pem
 
   kubeconfig:
-    desc: Add the testkube-poc cluster to ~/.kube/config (run after stacks/eks)
+    desc: Add the testkube-poc cluster to ~/.kube/config (task bootstrap runs it after stacks/eks)
     deps: [ministack:aws-profile]
     cmds:
       - aws --profile ministack eks update-kubeconfig --name testkube-poc --alias testkube-poc --user-alias testkube-poc
@@ -50,6 +56,8 @@ tasks:
       # The next stacks/eks apply makes a new CA.
       - task: untrust-ca
       - rm -f {{.CA_FILE}}
+      # Made from .local/github-app.pem by task github-app-key; the .pem itself stays.
+      - rm -f .local/github-app.pkcs8.pem
 
   urls:
     desc: Show the endpoints and logins
