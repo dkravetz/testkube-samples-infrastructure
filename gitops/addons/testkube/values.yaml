@@ -28,3 +28,7 @@ testkube:
       secretKeyAccessKeyId: accessKeyId
       secretNameSecretAccessKey: testkube-storage
       secretKeySecretAccessKey: secretAccessKey
+    # Execution logs go to the same bucket (default: a "testkube-logs" bucket, which the API would
+    # try to create; its IAM user may only use the one bucket).
+    logs:
+      bucket: testkube-poc-testkube
