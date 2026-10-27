@@ -81,6 +81,9 @@ terrakube:
   executor:
     version: 2.33.3
     existingSecret: true
+    # Each pod runs one job at a time and reports not ready while busy, so this is the number of
+    # jobs running at once; the API retries a job while all pods are busy.
+    replicaCount: "3"
 
   registry:
     version: 2.33.3
