@@ -33,3 +33,20 @@ output "ca_cert_pem" {
   description = "Certificate (PEM) of the local CA that signs the edge certificate."
   value       = tls_self_signed_cert.ca.cert_pem
 }
+
+output "terrakube_admin_token" {
+  description = "Terrakube admin API token (PAT, group TERRAKUBE_ADMIN)."
+  value       = module.terrakube.admin_token
+  sensitive   = true
+}
+
+output "terrakube_admin_email" {
+  description = "Login of Terrakube's admin user."
+  value       = module.terrakube.admin_email
+}
+
+output "terrakube_admin_password" {
+  description = "Password of Terrakube's admin user."
+  value       = module.terrakube.admin_password
+  sensitive   = true
+}

@@ -1,0 +1,9 @@
+# Terrakube, on ministack's RDS Postgres, ElastiCache Redis and S3 (modules/eks-cluster,
+# terrakube.tf), with its secrets from Secrets Manager through the ClusterSecretStore "aws".
+apiVersion: v2
+name: terrakube
+version: 0.1.0
+dependencies:
+  - name: terrakube
+    version: 4.7.12
+    repository: https://charts.terrakube.io

@@ -1,0 +1,105 @@
+terrakube:
+  # The cluster is IPv4 only.
+  enableIPv6: false
+
+  security:
+    # Users are Dex static passwords (below), so no OpenLDAP.
+    useOpenLDAP: false
+    adminGroup: TERRAKUBE_ADMIN
+    # Must match modules/eks-cluster (terrakube.tf), which also puts it in the components' Secrets.
+    dexClientId: terrakube
+
+  dex:
+    # Static passwords carry groups from Dex v2.45.0 on; the chart's default is v2.44.0.
+    image:
+      tag: v2.46.1
+    # The admin's bcrypt hash (TERRAKUBE_ADMIN_PASSWORD_HASH), from Secrets Manager.
+    envFrom:
+      - secretRef:
+          name: terrakube-dex-env
+    config:
+      # Served by the API's route (ingress.dex). Plain HTTP: pods reach it through the CoreDNS
+      # rewrite to the edge Gateway and need no CA.
+      issuer: http://terrakube-api.platform.localhost/dex
+      storage:
+        type: memory
+      web:
+        http: 0.0.0.0:5556
+        allowedOrigins: ["*"]
+      oauth2:
+        responseTypes: ["code", "token", "id_token"]
+        skipApprovalScreen: true
+        # Lets scripts get a token with a password (grant_type=password).
+        passwordConnector: local
+      enablePasswordDB: true
+      staticPasswords:
+        # Must match modules/eks-cluster (terrakube.tf): the login, the hash's variable, the group.
+        - email: admin@platform.localhost
+          username: admin
+          userID: 7d1c5a1e-6f0a-4c35-9c55-0d1f3b6f2a01
+          hashFromEnv: TERRAKUBE_ADMIN_PASSWORD_HASH
+          groups:
+            - TERRAKUBE_ADMIN
+      connectors: []
+      staticClients:
+        - id: terrakube
+          name: Terrakube
+          public: true
+          redirectURIs:
+            - http://terrakube.platform.localhost
+            - https://terrakube.platform.localhost
+            # terraform/tofu login
+            - /device/callback
+            - http://localhost:10000/login
+            - http://localhost:10001/login
+
+  # Storage, database and Redis are ministack's (S3, RDS, ElastiCache). Hosts, keys and the S3
+  # endpoint come from the components' Secrets (existingSecret), which override the chart's
+  # ConfigMaps.
+  storage:
+    defaultStorage: false
+    aws:
+      # Must match modules/eks-cluster (terrakube.tf).
+      bucketName: testkube-poc-terrakube
+      region: us-east-1
+
+  api:
+    # Terrakube's latest release; the chart still defaults to 2.33.1.
+    version: 2.33.3
+    existingSecret: true
+    defaultDatabase: false
+    defaultRedis: false
+    loadSampleData: false
+    properties:
+      databaseType: POSTGRESQL
+      databaseName: terrakube
+      databaseUser: terrakube
+      databasePort: "5432"
+      redisPort: "6379"
+
+  executor:
+    version: 2.33.3
+    existingSecret: true
+
+  registry:
+    version: 2.33.3
+    existingSecret: true
+
+  ui:
+    version: 2.33.3
+
+  ingress:
+    controller: gatewayapi
+    gatewayapi:
+      apiVersion: v1
+      gateways:
+        - group: gateway.networking.k8s.io
+          kind: Gateway
+          name: edge
+          namespace: envoy-gateway-system
+    ui:
+      domain: terrakube.platform.localhost
+    api:
+      domain: terrakube-api.platform.localhost
+    registry:
+      domain: terrakube-registry.platform.localhost

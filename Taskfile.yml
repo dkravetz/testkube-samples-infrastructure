@@ -51,6 +51,10 @@ tasks:
         else
           echo "Argo CD:    not deployed (tofu apply in stacks/eks)"
         fi
+        if password=$(tofu -chdir=stacks/eks output -raw terrakube_admin_password 2>/dev/null); then
+          echo "Terrakube:  http://terrakube.platform.localhost  ($(tofu -chdir=stacks/eks output -raw terrakube_admin_email) / $password)"
+          echo "            API http://terrakube-api.platform.localhost  (token $(tofu -chdir=stacks/eks output -raw terrakube_admin_token))"
+        fi
         if [ -f {{.CA_FILE}} ]; then
           echo "Local CA:   {{.CA_FILE}}  (curl --cacert {{.CA_FILE}}; task trust-ca for browsers)"
         else
