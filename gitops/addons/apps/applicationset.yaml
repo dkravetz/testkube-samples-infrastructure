@@ -1,0 +1,72 @@
+# The PoC's one app, testkube-samples (the same repo terrakube/app-bootstrap names): one
+# Application per env file in its repo (envs/<env>.yaml, { revision: <full sha> | <tag> }).
+# Each renders the repo's base-app chart (chart/) at that revision with the repo's app.yaml as
+# its values, into namespace testkube-samples-<env>.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: testkube-samples
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1" # after the AppProject
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    # path.filename gives the env, revision the ref.
+    - git:
+        repoURL: https://github.com/dkravetz/testkube-samples
+        revision: main
+        files:
+          - path: envs/*.yaml
+  template:
+    metadata:
+      name: 'testkube-samples-{{ trimSuffix ".yaml" .path.filename }}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: apps
+      source:
+        repoURL: https://github.com/dkravetz/testkube-samples
+        targetRevision: "{{ .revision }}"
+        path: chart
+        helm:
+          # app.yaml is the chart's values (a file outside the chart is read from the same repo,
+          # relative to chart/); base-app merges its envs.<env> over its components.
+          valueFiles:
+            - ../app.yaml
+          parameters:
+            - name: global.app
+              value: testkube-samples
+            # Argo CD's build environment: the app repo, where the tests are checked out from.
+            - name: global.repository
+              value: $ARGOCD_APP_SOURCE_REPO_URL
+            - name: global.env
+              value: '{{ trimSuffix ".yaml" .path.filename }}'
+            - name: global.domain
+              value: '{{ trimSuffix ".yaml" .path.filename }}.localhost'
+            # The commit the revision resolves to (a tag too).
+            - name: global.revision
+              value: $ARGOCD_APP_REVISION
+              forceString: true
+            - name: global.image.tag
+              value: sha-$ARGOCD_APP_REVISION_SHORT
+              forceString: true
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'testkube-samples-{{ trimSuffix ".yaml" .path.filename }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        # SkipDryRunOnMissingResource: the TestWorkflow CRD comes with the testkube add-on.
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 10
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

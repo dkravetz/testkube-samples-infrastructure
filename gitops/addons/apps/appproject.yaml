@@ -1,0 +1,23 @@
+# What the app's Applications may deploy: from the app repo, into its own namespaces and into
+# testkube, where base-app puts TestWorkflows (a standalone Testkube agent reads them only from
+# its own namespace).
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps
+  namespace: argocd
+spec:
+  description: testkube-samples, one Application per env.
+  sourceRepos:
+    - https://github.com/dkravetz/testkube-samples
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: testkube-samples-dev
+    - server: https://kubernetes.default.svc
+      namespace: testkube-samples-prd
+    - server: https://kubernetes.default.svc
+      namespace: testkube
+  # Only the namespaces CreateNamespace makes; every namespaced kind is allowed.
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
