@@ -3,7 +3,7 @@ version: '3'
 silent: true
 
 vars:
-  IMAGE: ministackorg/ministack:1.5.32-full
+  IMAGE: ministackorg/ministack:1.5.33-full
   SOCAT_IMAGE: alpine/socat:1.8.1.3
   # k3s for EKS clusters (ministack's default is 1.31). 1.36 is the newest Kubernetes that both
   # Envoy Gateway v1.9 and Argo CD 3.5 support; keep stacks/eks kubernetes_version in step.

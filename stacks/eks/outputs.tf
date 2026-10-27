@@ -28,3 +28,20 @@ output "ca_cert_file" {
   description = "Local CA certificate (PEM) the edge certificate is signed with."
   value       = abspath(local_file.ca_cert.filename)
 }
+
+output "terrakube_admin_token" {
+  description = "Terrakube admin API token (PAT)."
+  value       = module.cluster.terrakube_admin_token
+  sensitive   = true
+}
+
+output "terrakube_admin_email" {
+  description = "Login of Terrakube's admin user."
+  value       = module.cluster.terrakube_admin_email
+}
+
+output "terrakube_admin_password" {
+  description = "Password of Terrakube's admin user."
+  value       = module.cluster.terrakube_admin_password
+  sensitive   = true
+}

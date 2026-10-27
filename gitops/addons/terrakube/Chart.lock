@@ -1,0 +1,6 @@
+dependencies:
+- name: terrakube
+  repository: https://charts.terrakube.io
+  version: 4.7.12
+digest: sha256:2fbee3f2521859ddf510d7ae2a9afde6568e51ed99c048312d1c52ebad20b696
+generated: "2026-10-26T21:40:20.715173+01:00"
