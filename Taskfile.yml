@@ -73,6 +73,13 @@ tasks:
           echo "Terrakube:  http://terrakube.platform.localhost  ($(tofu -chdir=stacks/eks output -raw terrakube_admin_email) / $password)"
           echo "            API http://terrakube-api.platform.localhost  (token $(tofu -chdir=stacks/eks output -raw terrakube_admin_token))"
         fi
+        # Every app env the cluster serves: the first (browser) hostname of each HTTPRoute that
+        # isn't the platform's own (*.platform.localhost, above).
+        hosts=$(kubectl get httproutes -A -o jsonpath='{range .items[*]}{.spec.hostnames[0]}{"\n"}{end}' 2>/dev/null \
+          | grep -v '\.platform\.localhost$' | sort -u)
+        for host in $hosts; do
+          echo "App:        http://$host  https://$host"
+        done
         if [ -f {{.CA_FILE}} ]; then
           echo "Local CA:   {{.CA_FILE}}  (curl --cacert {{.CA_FILE}}; task trust-ca for browsers)"
         else
