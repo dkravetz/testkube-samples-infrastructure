@@ -82,10 +82,39 @@ It runs these steps in order (`Taskfile.yml`, `bootstrap/ministack/Taskfile.yml`
    cluster to `~/.kube/config`.
 6. `urls`: prints the URLs and logins. When you see them, bootstrap is done.
 
-Timings from one run on an Apple Silicon Mac (Colima at 4 CPU, 16 GiB): k3s started 30
-seconds after ministack, and every add-on was synced about 3 minutes after ministack started.
-The app comes later: Terrakube has to create the app's databases first. Here dev's database
-was up after 11 minutes and prd's after 16.
+Timings from a rebuild after `task down` on an Apple Silicon Mac (Colima at 4 CPU, 16 GiB):
+
+| After | What |
+| --- | --- |
+| 4 min | `task bootstrap` done, every add-on synced and healthy |
+| 6 min | `app-bootstrap`'s first scheduled run starts |
+| 7 min | dev and prd workspaces exist |
+| 11 min | both app databases exist, and their secrets are synced into the app's namespaces |
+| 14 min | dev synced and healthy |
+| 15.5 min | dev's tests passed, release `v0.1.6` cut |
+| 17 min | prd synced and healthy on `v0.1.6` (after a manual sync in Argo CD; left alone, it waits for its next retry, up to 3 more minutes) |
+
+### Why the app takes this long
+
+The platform is up in about 4 minutes. The app needs another 10 or more, almost all of it
+waiting, because nothing triggers anything ([tradeoffs](docs/tradeoffs.md)):
+
+- `app-bootstrap` only runs on its 5-minute schedule, so the app's workspaces appear at the
+  next tick after bootstrap.
+- Their first run creates the databases and their secrets.
+- Until a secret exists, the app's ExternalSecret fails, and Argo CD won't apply the rest of
+  the app (the ExternalSecrets come first, in sync wave `-1`). Argo CD retries with a growing
+  backoff (10 s, doubling, up to 3 minutes), so once the secret is there it can take up to 3
+  more minutes to notice.
+- After dev syncs, its tests run, and only then is the release cut that prd follows.
+
+### The first deployment also cuts a release and deploys prd
+
+Nothing on a fresh cluster is special: the first dev sync is like any other. Its PostSync Job
+runs the tests, and when they pass it asks GitHub to release the commit. So unless the commit
+on `main` already has a release tag, every fresh bootstrap creates a new release (here
+`v0.1.6`), and prd deploys twice: first the latest existing release, which `app-bootstrap` and
+Argo CD find at startup, then the new one.
 
 Print the URLs and logins again at any time:
 

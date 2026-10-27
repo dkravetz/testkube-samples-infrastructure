@@ -167,6 +167,18 @@ password. Terrakube workspaces share one IAM user with `rds:*` and every secret 
 **For real.** A role per app and env, scoped to `apps/<app>/<env>/*`, and Terrakube dynamic
 credentials (OIDC) instead of static keys.
 
+## No monitoring
+
+**What.** Nothing collects metrics or logs, and nothing alerts. There is no metrics-server
+either, so the chart's HPA can't scale. Failures show up only by looking: Argo CD's UI for
+syncs, Terrakube's UI for runs, `kubectl` for pods.
+
+**Why.** Time, and it's a proof of concept.
+
+**For real.** Metrics and dashboards (for example Prometheus and Grafana), central logs, and
+alerts on what breaks the delivery path: failed Argo CD syncs, failed Terrakube runs, failed
+release Jobs, and database health from CloudWatch.
+
 ## Admin-only logins
 
 **What.** Argo CD has only its `admin` user (Dex is off). Terrakube has one static Dex user in
