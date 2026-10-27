@@ -1,0 +1,30 @@
+testkube:
+  # Metadata in ministack's RDS Postgres (below), not an in-cluster MongoDB.
+  mongodb:
+    enabled: false
+
+  testkube-api:
+    mongodb:
+      enabled: false
+    # The API's own database client, not the chart's in-cluster server (top-level postgresql).
+    postgresql:
+      enabled: true
+      # From Secrets Manager platform/testkube/postgres (templates/external-secrets.yaml).
+      secretName: testkube-postgres
+      secretKey: dsn
+
+    # Logs and artifacts in ministack's S3, so no MinIO.
+    minio:
+      enabled: false
+    storage:
+      # ministack as pods see it (CoreDNS answers "ministack" in-cluster); host:port, plain HTTP.
+      endpoint: ministack:4566
+      SSL: false
+      region: us-east-1
+      # Must match modules/eks-cluster (testkube.tf): "<cluster>-testkube".
+      bucket: testkube-poc-testkube
+      # From Secrets Manager platform/testkube/storage.
+      secretNameAccessKeyId: testkube-storage
+      secretKeyAccessKeyId: accessKeyId
+      secretNameSecretAccessKey: testkube-storage
+      secretKeySecretAccessKey: secretAccessKey

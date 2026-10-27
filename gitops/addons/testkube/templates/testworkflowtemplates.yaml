@@ -1,0 +1,82 @@
+# The test types an app's app.yaml can name (components.<name>.tests[].type). base-app renders
+# one TestWorkflow per test that uses one of these with {repo, revision, path, origin}; origin is
+# an in-cluster .internal route (BRIEF D21), since Hurl and Cypress resolve *.localhost to
+# loopback themselves.
+# The config.* expressions in double braces are Testkube's, not Helm's, hence the escaping.
+apiVersion: testworkflows.testkube.io/v1
+kind: TestWorkflowTemplate
+metadata:
+  name: hurl
+spec:
+  config:
+    repo:
+      type: string
+      description: Git URL of the app repo
+    revision:
+      type: string
+      description: Commit or ref to check out
+    path:
+      type: string
+      description: Directory of the .hurl files
+    origin:
+      type: string
+      description: Base URL the tests call, passed as the Hurl variable "origin"
+  content:
+    git:
+      uri: {{ "'{{ config.repo }}'" }}
+      revision: {{ "'{{ config.revision }}'" }}
+      paths:
+        - {{ "'{{ config.path }}'" }}
+  container:
+    image: ghcr.io/orange-opensource/hurl:8.0.1
+    workingDir: {{ "'/data/repo/{{ config.path }}'" }}
+  steps:
+    - name: hurl
+      run:
+        # A directory runs every .hurl file in it.
+        args: ["--test", "--variable", {{ "'origin={{ config.origin }}'" }}, "."]
+---
+apiVersion: testworkflows.testkube.io/v1
+kind: TestWorkflowTemplate
+metadata:
+  name: cypress
+spec:
+  config:
+    repo:
+      type: string
+      description: Git URL of the app repo
+    revision:
+      type: string
+      description: Commit or ref to check out
+    path:
+      type: string
+      description: Directory of the Cypress project (its cypress.config.*)
+    origin:
+      type: string
+      description: Base URL of the app, passed as CYPRESS_BASE_URL
+  # The whole repo: an npm workspace installs from the root.
+  content:
+    git:
+      uri: {{ "'{{ config.repo }}'" }}
+      revision: {{ "'{{ config.revision }}'" }}
+  container:
+    # Must match the app's own cypress version (the testkube-samples web app: 13.9.0); runs
+    # Electron (BRIEF D20).
+    image: cypress/included:13.9.0
+    env:
+      - name: CYPRESS_BASE_URL
+        value: {{ "'{{ config.origin }}'" }}
+      # The image has the binary; npm ci only needs the project's packages.
+      - name: CYPRESS_INSTALL_BINARY
+        value: "0"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+  steps:
+    - name: install
+      workingDir: /data/repo
+      shell: npm ci --no-audit --no-fund
+    - name: cypress
+      workingDir: {{ "'/data/repo/{{ config.path }}'" }}
+      shell: cypress run
