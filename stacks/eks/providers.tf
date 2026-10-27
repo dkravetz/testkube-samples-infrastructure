@@ -15,6 +15,8 @@ provider "aws" {
   skip_credentials_validation = true
   skip_requesting_account_id  = true
   skip_metadata_api_check     = true
+  # Terrakube's bucket lives in the pseudo-region "auto" (modules/terrakube, storage.tf).
+  skip_region_validation = true
 
   endpoints {
     ec2            = "http://localhost:4566"

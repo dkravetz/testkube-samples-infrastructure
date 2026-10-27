@@ -61,6 +61,7 @@ terrakube:
     aws:
       # Must match modules/eks-cluster (terrakube.tf).
       bucketName: testkube-poc-terrakube
+      # The components' Secrets carry the bucket's real region ("auto" on ministack).
       region: us-east-1
 
   api:

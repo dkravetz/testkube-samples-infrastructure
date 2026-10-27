@@ -19,6 +19,16 @@ tasks:
       - task: ministack:up
       - tofu -chdir=bootstrap/tofu-state init -input=false
       - tofu -chdir=bootstrap/tofu-state apply -input=false -auto-approve
+      - task: github-app-key
+
+  github-app-key:
+    desc: Write the GitHub App's private key as PKCS#8 (.local/github-app.pkcs8.pem), for Terrakube
+    preconditions:
+      - sh: test -f .local/github-app.pem
+        msg: ".local/github-app.pem is missing: download the GitHub App's private key there."
+    cmds:
+      # GitHub hands out PKCS#1 keys; Terrakube only reads PKCS#8.
+      - openssl pkcs8 -topk8 -nocrypt -in .local/github-app.pem -out .local/github-app.pkcs8.pem
 
   kubeconfig:
     desc: Add the testkube-poc cluster to ~/.kube/config (run after stacks/eks)
