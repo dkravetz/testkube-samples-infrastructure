@@ -1,7 +1,7 @@
 # The PoC's one app, testkube-samples (the same repo terrakube/app-bootstrap names): one
-# Application per env file in its repo (envs/<env>.yaml, { revision: <full sha> | <tag> }).
-# Each renders the repo's base-app chart (chart/) at that revision with the repo's app.yaml as
-# its values, into namespace testkube-samples-<env>.
+# Application per key of `envs` in its app.yaml (on main), at that env's `revision` (default
+# main). Each renders the repo's base-app chart (chart/) at that revision with the repo's
+# app.yaml as its values, into namespace testkube-samples-<env>.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -13,15 +13,24 @@ spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
-    # path.filename gives the env, revision the ref.
-    - git:
-        repoURL: https://github.com/dkravetz/testkube-samples
-        revision: main
-        files:
-          - path: envs/*.yaml
+    # app.yaml's contents × one element per env in its `envs`: {env, revision}.
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/dkravetz/testkube-samples
+              revision: main
+              files:
+                - path: app.yaml
+          - list:
+              elementsYaml: >-
+                {{- $envs := list }}
+                {{- range $env, $settings := .envs }}
+                {{- $envs = append $envs (dict "env" $env "revision" (dig "revision" "main" $settings)) }}
+                {{- end }}
+                {{- $envs | toJson }}
   template:
     metadata:
-      name: 'testkube-samples-{{ trimSuffix ".yaml" .path.filename }}'
+      name: 'testkube-samples-{{ .env }}'
       finalizers:
         - resources-finalizer.argocd.argoproj.io
     spec:
@@ -42,9 +51,9 @@ spec:
             - name: global.repository
               value: $ARGOCD_APP_SOURCE_REPO_URL
             - name: global.env
-              value: '{{ trimSuffix ".yaml" .path.filename }}'
+              value: '{{ .env }}'
             - name: global.domain
-              value: '{{ trimSuffix ".yaml" .path.filename }}.localhost'
+              value: '{{ .env }}.localhost'
             # The commit the revision resolves to (a tag too).
             - name: global.revision
               value: $ARGOCD_APP_REVISION
@@ -54,7 +63,7 @@ spec:
               forceString: true
       destination:
         server: https://kubernetes.default.svc
-        namespace: 'testkube-samples-{{ trimSuffix ".yaml" .path.filename }}'
+        namespace: 'testkube-samples-{{ .env }}'
       syncPolicy:
         automated:
           prune: true
