@@ -1,0 +1,10 @@
+# Testkube, standalone agent, on ministack's RDS Postgres and S3 (modules/eks-cluster,
+# testkube.tf), with its secrets from Secrets Manager through the ClusterSecretStore "aws", plus
+# the Hurl and Cypress TestWorkflowTemplates the apps' TestWorkflows use.
+apiVersion: v2
+name: testkube
+version: 0.1.0
+dependencies:
+  - name: testkube
+    version: 2.14.2
+    repository: https://kubeshop.github.io/helm-charts
